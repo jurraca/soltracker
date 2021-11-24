@@ -1,4 +1,4 @@
-defmodule SolTracker.Transfers do 
+defmodule SolTracker.Transfers do
 
 	# The Solana SystemProgram, a str len 32
 	@system_program "11111111111111111111111111111111"
@@ -6,7 +6,7 @@ defmodule SolTracker.Transfers do
 
 	# System Program transfers are just SOL transfers from one account to the other, not an NFT.
 	def track() do
-		SolTracker.logs_subscribe(@system_program)
+		SolTracker.program_subscribe(@token_program)
 	end
 
 	def decode(%{"result" => result, "subscription" => sub}) do

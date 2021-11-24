@@ -11,7 +11,7 @@ defmodule SolTracker do
     Spawns a new supervised Client process. 
   """
   def logs_subscribe(pubkey \\ "all") do
-    params = %{"id" => 1, "jsonrpc" => "2.0", "method" => "logsSubscribe", "params" => [%{"mentions" => [ pubkey ]}, %{"commitment" => "finalized"}]}
+    params = %{"id" => 1, "jsonrpc" => "2.0", "method" => "logsSubscribe", "params" => [%{"mentions" => [ pubkey ]}, %{"encoding" => "jsonParsed", "commitment" => "finalized"}]}
     {:ok, msg} = Jason.encode(params)
     spawn_subscription(msg)
   end
