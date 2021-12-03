@@ -41,8 +41,10 @@ defmodule SolTracker do
 
   def spawn_subscription(msg) do
     {:ok, pid} = SolTracker.Client.start_link([])
-    WebSockex.cast(pid, {:send, {:binary, msg}}) |> IO.inspect()
+    WebSockex.cast(pid, {:send, {:binary, msg}})
   end
 
   def rpc_client(), do: RPC.client(network: @rpc_url)
+
+  def rpc_send(request), do: RPC.send(rpc_client(), request)
 end

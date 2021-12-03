@@ -4,7 +4,6 @@ defmodule SolTracker.Transfers do
 		otp_app: :soltracker,
 		crate: :metaplex_decoder 
 
-	# The Solana SystemProgram, a str len 32
 	@system_program "11111111111111111111111111111111"
 	@token_program "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 	@metadata_program "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
@@ -33,11 +32,12 @@ defmodule SolTracker.Transfers do
 	From an account Base58-encoded pubKey, find a Program Derived Address (PDA) for the Token Metadata Program.
 	"""
 	def get_metadata_pda(account_pubkey) do
-		meta = B58.decode58!("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
-		addr = B58.decode58!(account_pubkey)
+		with {:ok, meta} <- B58.decode58!(@metadata_program),
+			{:ok, addr} = B58.decode58(account_pubkey),
+			{:ok, pda, _i} = Solana.Key.find_address(["metadata", meta, addr], meta) do 
 
-		{:ok, pda, _i} = Solana.Key.find_address(["metadata", meta, addr], meta)
-		B58.encode58(pda)
+			B58.encode58(pda)
+		end
 	end
 
 	@doc"""
@@ -47,18 +47,23 @@ defmodule SolTracker.Transfers do
 	"""
 	def metadata_from_pda(pda_58) do
 		pda_58
-		|> pda_to_b58()
+		|> get_metadata()
 		|> deserialize_metadata()
 		|> Jason.decode()
 	end
 
-
-	def pda_to_b58(pda) do
+	@doc """
+	Get the account info of a PDA, which for the Token Metadata Program will be the Metaplex metadata JSON itself.
+	We base64-encode it bc it can handle more data than other encodings -- you will get size errors with base58.
+	Return a base58-encoded string, because this is what the deserializer expects.
+	"""
+	def get_metadata(pda) do
 		{:ok, bin} = B58.decode58(pda)
 		request = Solana.RPC.Request.get_account_info(bin, %{"encoding" => "base64"})
-	   	{:ok, %{"data" => data}} = Solana.RPC.send(SolTracker.rpc_client(), request)
-	   	{:ok, b} = Base.decode64(Enum.at(data, 0))
-	   	B58.encode58(b)
+		with {:ok, %{"data" => data}} <- SolTracker.rpc_send(request),
+			{:ok, b} <- Base.decode64(Enum.at(data, 0)) do
+			B58.encode58(b)
+		end
 	end
 
 	def deserialize_metadata(arg), do: :erlang.nif_error(:nif_not_loaded)
