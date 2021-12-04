@@ -33,12 +33,8 @@ defmodule SolTracker.Client do
   end
 
   def filter_msg({:ok, %{"method" => "rootNotification", "params" => params}}) do 
-    %{"result" => root, "subscription" => sub} = params
-    IO.inspect("Root Notification for subscription #{sub}")
-
-    root
-    |> Block.fetch()
-    |> Block.print()
+    %{"result" => root, "subscription" => _sub} = params
+    Block.fetch(root)
   end
 
   def filter_msg({:ok, %{"method" => "logsNotification", "params" => params}}) do
@@ -51,7 +47,6 @@ defmodule SolTracker.Client do
     params 
     |> Map.take(["result", "subscription"])
     |> SolTracker.Transfers.decode()
-    |> IO.inspect()
   end
 
   def filter_msg({:ok, %{"result" => result}}) when is_integer(result) do

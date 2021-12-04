@@ -14,7 +14,7 @@ pub struct JSONCreator {
 }
 
 #[rustler::nif]
-fn deserialize_metadata(base58_string: String) -> std::string::String { //Result<std::string::String, Box<dyn Error>> { // base58_string: String
+fn deserialize_metadata(base58_string: String) -> std::string::String {
     let decoded: Vec<u8> = bs58::decode(base58_string)
         .into_vec()
         .expect("Failed to decode base58 string");
@@ -42,14 +42,5 @@ fn deserialize_metadata(base58_string: String) -> std::string::String { //Result
         "creators": [creators],
     });
 
-    println!("{}", nft_metadata.to_string());
-
     nft_metadata.to_string()
 }
-
-//#[pymodule]
-//fn metaplex_decoder(_py: Python, m: &PyModule) -> PyResult<()> {
-//    m.add_function(wrap_pyfunction!(deserialize_metadata, m)?)?;
-//
-//    Ok(())
-//}

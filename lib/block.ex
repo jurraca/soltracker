@@ -4,6 +4,7 @@ defmodule SolTracker.Block do
 	
 	@system_program "11111111111111111111111111111111"
 	@token_program "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+	@metadata_program "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 
 	# check account keys for token program
 	# if it exists, get its index
@@ -18,12 +19,6 @@ defmodule SolTracker.Block do
 	   RPC.send(SolTracker.rpc_client(), request)
 	end
 
-	def print({:ok, %{"blockHeight" => height, "blockhash" => hash}}) do 
-	   IO.puts("Fetched block #{height} with hash #{hash}")
-	end
-	
- 	def print({:error, %{"message" => msg}}), do: IO.inspect(msg)
-	
 	def parse_transfers(%{"transactions" => txs}) do
 		Enum.map(txs, fn %{"transaction" => tx} -> filter_txs(tx) end)
 	end
@@ -36,7 +31,7 @@ defmodule SolTracker.Block do
 	end
 
 	defp get_token_program_index(keys) when is_list(keys) do 
-		Enum.find_index(keys, fn x -> x == @token_program end)
+		Enum.find_index(keys, fn x -> x == @metadata_program end)
 	end
 
 	defp get_token_program_index(_), do: {:error, "Not a list of keys."}
@@ -51,7 +46,7 @@ defmodule SolTracker.Block do
 	defp decode_instruction_data(%{"data" => data} = instructions) do 
 		decoded = data
 			|> B58.decode58()
-			|> parse_data()
+			|> IO.inspect() #parse_data()
 
 		{:ok, decoded, instructions}
 	end
@@ -63,7 +58,7 @@ defmodule SolTracker.Block do
 	end
 
 	defp parse_data({:error, _} = err), do: err
-	defp parse_data(_), do: nil
+	defp parse_data(bin), do: bin
 
 	def fetch_accounts({:ok, nil, _}, _keys), do: {:ok, :parse_error}
 

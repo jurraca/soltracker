@@ -17,13 +17,19 @@ defmodule SolTracker.Transfers do
 		decode(result)
 	end
 
-	def decode(%{"context" => context, "value" => %{"pubkey" => _pubkey, "account" => account}}) do 
+	def decode(%{"context" => context, "value" => %{"pubkey" => pubkey, "account" => account}}) do
 		%{
 			slot: Map.get(context, "slot"),
+			pubkey: pubkey,
 			program: account["data"],
 			lamports: Map.get(account, "lamports"),
 			owner: Map.get(account, "owner")
 		}
+
+		# decode base64 data ?
+		pubkey
+		|> derive_metadata_pda()
+		|> get_metadata_from_pda()
 	end
 
 	def decode(msg), do: msg
@@ -31,10 +37,10 @@ defmodule SolTracker.Transfers do
 	@doc """
 	From an account Base58-encoded pubKey, find a Program Derived Address (PDA) for the Token Metadata Program.
 	"""
-	def get_metadata_pda(account_pubkey) do
+	def derive_metadata_pda(account_pubkey) do
 		with {:ok, meta} <- B58.decode58!(@metadata_program),
-			{:ok, addr} = B58.decode58(account_pubkey),
-			{:ok, pda, _i} = Solana.Key.find_address(["metadata", meta, addr], meta) do 
+			{:ok, addr} <- B58.decode58(account_pubkey),
+			{:ok, pda, _i} <- Solana.Key.find_address(["metadata", meta, addr], meta) do
 
 			B58.encode58(pda)
 		end
@@ -45,7 +51,7 @@ defmodule SolTracker.Transfers do
 	Get the account info for the PDA, and base58 encode it.
 	Deserialize it according to the TMP spec by calling out to the Rust program via Rustler.
 	"""
-	def metadata_from_pda(pda_58) do
+	def get_metadata_from_pda(pda_58) do
 		pda_58
 		|> get_metadata()
 		|> deserialize_metadata()

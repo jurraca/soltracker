@@ -34,11 +34,6 @@ defmodule SolTracker do
     WebSockex.cast(pid, {:send, {:binary, msg}})
   end
 
-  def test_run(pid) do
-    {:ok, msg} = Jason.encode(%{"method" => "rootSubscribe", "id" => 1, "jsonrpc" => "2.0"})
-    WebSockex.cast(pid, {:send, {:binary, msg}})
-  end
-
   def spawn_subscription(msg) do
     {:ok, pid} = SolTracker.Client.start_link([])
     WebSockex.cast(pid, {:send, {:binary, msg}})
