@@ -4,32 +4,64 @@ defmodule SolTracker.Transfers do
 		otp_app: :soltracker,
 		crate: :metaplex_decoder 
 
+	alias SolTracker.Block
+
 	@system_program "11111111111111111111111111111111"
 	@token_program "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 	@metadata_program "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
 
-	def track(program_pub_key) do
+	def track(program_pub_key \\ @metadata_program) do
 		SolTracker.program_subscribe(program_pub_key)
 	end
 
-	def decode(%{"result" => result, "subscription" => sub}) do
-		IO.inspect(sub) # todo: validate the subscription id is the one we expect
-		decode(result)
+	def parse_transfers_from_slot(slot) when is_integer(slot) do
+		{:ok, %{"transactions" => txs}} = Block.fetch(slot)
+
+		Enum.map(txs, &fetch_token_transfers(&1))		
 	end
 
-	def decode(%{"context" => context, "value" => %{"pubkey" => pubkey, "account" => account}}) do
-		%{
-			slot: Map.get(context, "slot"),
+	def fetch_tx(tx_id) do
+		case B58.decode58(tx_id) do
+		   {:ok, b} -> SolTracker.rpc_send(Solana.RPC.Request.get_transaction(b))
+		   {:error, _} ->  SolTracker.rpc_send(Solana.RPC.Request.get_transaction(tx_id))
+		end
+	end
+
+	def fetch_token_transfers(%{"meta" => %{"postTokenBalances" => []}}), do: nil
+
+	def fetch_token_transfers(%{"meta" => %{"postTokenBalances" => ptb}, "transaction" => %{"signatures" => sigs} = tx}) do
+		tx_id = Enum.at(sigs, 0) # there can be more than one sig in a tx, this is a heuristic to identify the tx within the block
+		
+		ptb
+		|> Enum.map(fn ptb -> derive_metadata_pda(ptb["mint"]) end)
+		|> Enum.reduce(
+			%{},
+			fn {:ok, x}, acc -> Map.put_new(acc, tx_id, x)
+				_, acc -> acc
+			 end)
+	end
+
+	def decode(%{"result" => result, "subscription" => sub}), do: decode(result)
+
+	def decode(%{"context" => context, "value" => %{"pubkey" => pubkey, "account" => %{"data" => data} = account}}) do
+		account = %{
+			slot: account["slot"],
 			pubkey: pubkey,
-			program: account["data"],
-			lamports: Map.get(account, "lamports"),
-			owner: Map.get(account, "owner")
+			data: data,
+			owner: account["owner"],
+			lamports: account["lamports"]
 		}
 
-		# decode base64 data ?
-		pubkey
-		|> derive_metadata_pda()
-		|> get_metadata_from_pda()
+		if [b, "base64"] = data do
+			{:ok, s} = Base.decode64(b)
+			# TODO: shortvec encoding
+			case Jason.encode(s) do
+				{:error, _} = err -> err
+				{:ok, d} -> d |> IO.inspect()
+			end
+		else
+			IO.inspect(data)
+		end
 	end
 
 	def decode(msg), do: msg
@@ -38,11 +70,13 @@ defmodule SolTracker.Transfers do
 	From an account Base58-encoded pubKey, find a Program Derived Address (PDA) for the Token Metadata Program.
 	"""
 	def derive_metadata_pda(account_pubkey) do
-		with {:ok, meta} <- B58.decode58!(@metadata_program),
+		with {:ok, meta} <- B58.decode58(@metadata_program),
 			{:ok, addr} <- B58.decode58(account_pubkey),
 			{:ok, pda, _i} <- Solana.Key.find_address(["metadata", meta, addr], meta) do
 
-			B58.encode58(pda)
+			pda
+			|> B58.encode58()
+			|> get_metadata_from_pda()
 		end
 	end
 
