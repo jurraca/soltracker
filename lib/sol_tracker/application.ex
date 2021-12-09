@@ -3,7 +3,7 @@ defmodule SolTracker.Application do
 
   def start(_type, _args) do
     children = [
-   #   {SolTracker.Client, []}
+      #   {SolTracker.Client, []}
     ]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: SolTracker.Supervisor)
