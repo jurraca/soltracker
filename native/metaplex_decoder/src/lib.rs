@@ -21,9 +21,18 @@ fn deserialize_metadata(base58_string: String) -> std::string::String {
     
     let metadata: Metadata = try_from_slice_unchecked(&decoded).unwrap();
 
-    if let None = metadata.data.creators
-    {
-    	let creators = "None";
+    if let Some(ref _i) = metadata.data.creators
+    {    	
+    	let creators = metadata.data.creators
+	        .unwrap()
+	        .iter()
+	        .map(|c| JSONCreator {
+	            address: c.address.to_string(),
+	            verified: c.verified,
+	            share: c.share,
+	        })
+	        .collect::<Vec<JSONCreator>>();
+
         let nft_metadata = json!({
     	    "name": metadata.data.name.to_string().trim_matches(char::from(0)),
     	    "mint": metadata.mint.to_string().trim_matches(char::from(0)),
@@ -35,25 +44,17 @@ fn deserialize_metadata(base58_string: String) -> std::string::String {
 
     	nft_metadata.to_string()
     } else { 
-    	let creators = metadata.data.creators
-        .unwrap()
-        .iter()
-        .map(|c| JSONCreator {
-            address: c.address.to_string(),
-            verified: c.verified,
-            share: c.share,
-        })
-        .collect::<Vec<JSONCreator>>();
-
+    	let creators = "None";
         let nft_metadata = json!({
     	    "name": metadata.data.name.to_string().trim_matches(char::from(0)),
     	    "mint": metadata.mint.to_string().trim_matches(char::from(0)),
     	    "symbol": metadata.data.symbol.to_string().trim_matches(char::from(0)),
     	    "seller_fee_basis_points": metadata.data.seller_fee_basis_points,
     	    "uri": metadata.data.uri.to_string().trim_matches(char::from(0)),
-    	    "creators": [creators],
+    	    "creators": creators,
     	});
 
     	nft_metadata.to_string()
+
     }
 }

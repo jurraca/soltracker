@@ -33,11 +33,7 @@ defmodule SolTracker.Transfers do
     end
   end
 
-  defp parse_transfers(txs) do
-    txs
-    |> Enum.map(&filter_token_transfers(&1))
-    |> Enum.filter(fn i -> i !== %{} end)
-  end
+  defp parse_transfers(txs), do: Enum.map(txs, &filter_token_transfers(&1))
 
   @doc """
   For a transaction body, match on the postTokenBalances field, which tells us whether a Token transfer--not just a SOL transfer--occurred.
@@ -62,38 +58,8 @@ defmodule SolTracker.Transfers do
         _, acc -> acc
       end
     )
+    |> Enum.filter(fn i -> i !== %{} end)
   end
-
-  @doc """
-  Decoding function for the ProgramSubscribe websocket endpoint. Needs shortVec encoding to properly parse base64.
-  """
-  def decode(%{"result" => result, "subscription" => sub}), do: decode(result)
-
-  def decode(%{
-        "context" => context,
-        "value" => %{"pubkey" => pubkey, "account" => %{"data" => data} = account}
-      }) do
-    account = %{
-      slot: account["slot"],
-      pubkey: pubkey,
-      data: data,
-      owner: account["owner"],
-      lamports: account["lamports"]
-    }
-
-    if [b, "base64"] = data do
-      {:ok, s} = Base.decode64(b)
-      # TODO: shortvec encoding
-      case Jason.encode(s) do
-        {:error, _} = err -> err
-        {:ok, d} -> d |> IO.inspect()
-      end
-    else
-      Logger.warn(data)
-    end
-  end
-
-  def decode(msg), do: msg
 
   @doc """
   From an account Base58-encoded pubKey, find a Program Derived Address (PDA) for the Token Metadata Program.
@@ -148,4 +114,35 @@ defmodule SolTracker.Transfers do
 
   # NIF entry point function
   def deserialize_metadata(arg), do: :erlang.nif_error(:nif_not_loaded)
+
+  @doc """
+  Decoding function for the ProgramSubscribe websocket endpoint. Needs shortVec encoding to properly parse base64.
+  """
+  def decode(%{"result" => result, "subscription" => sub}), do: decode(result)
+
+  def decode(%{
+        "context" => context,
+        "value" => %{"pubkey" => pubkey, "account" => %{"data" => data} = account}
+      }) do
+    account = %{
+      slot: account["slot"],
+      pubkey: pubkey,
+      data: data,
+      owner: account["owner"],
+      lamports: account["lamports"]
+    }
+
+    if [b, "base64"] = data do
+      {:ok, s} = Base.decode64(b)
+      # TODO: shortvec encoding
+      case Jason.encode(s) do
+        {:error, _} = err -> err
+        {:ok, d} -> d |> IO.inspect()
+      end
+    else
+      Logger.warn(data)
+    end
+  end
+
+  def decode(msg), do: msg
 end
