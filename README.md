@@ -1,15 +1,16 @@
 # SolTracker
 
 Start a websocket client to listen for logs or programs, or use the RPC directly. 
+Parse Blocks by slot ID, Transactions, and filter for NFT transfers.
 
 ```elixir
 SolTracker.Transfers.track() # spawns a websocket in a supervised process 
 SolTracker.Block.fetch(108379233) # fetch a block via RPC by its slot number
-
 ```
+
 Query and parse a block for "transfer" types from the token program.
 ```elixir
-iex(1)> SolTracker.Transfers.decode(program_notification)
+iex(1)> SolTracker.Transfers.parse_transfers_from_slot(109742643)
 %{
   lamports: 2039280,
   owner: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -36,10 +37,6 @@ iex(1)> SolTracker.Transfers.decode(program_notification)
 }
 
 ```
-TODO: 
-- how to identify an NFT vs other tokens? For example, the output above is USDCoin, not an NFT.
-- mint vs authority? 
-
 
 ## Installation
 

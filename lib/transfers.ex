@@ -6,6 +6,8 @@ defmodule SolTracker.Transfers do
   require Logger
   alias SolTracker.Block
 
+  @metadata_program "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+
   @doc """
   	Subscribe to a particular Program identified by its public key.
   	See https://docs.solana.com/developing/clients/jsonrpc-api#programsubscribe
@@ -34,7 +36,7 @@ defmodule SolTracker.Transfers do
   defp parse_transfers(txs) do
     txs
     |> Enum.map(&filter_token_transfers(&1))
-    |> Enum.filter(fn i -> is_map(i) end)
+    |> Enum.filter(fn i -> i !== %{} end)
   end
 
   @doc """
@@ -101,7 +103,6 @@ defmodule SolTracker.Transfers do
          {:ok, addr} <- B58.decode58(account_pubkey),
          {:ok, pda, _i} <- Solana.Key.find_address(["metadata", meta, addr], meta) do
       pda
-      |> B58.encode58()
       |> get_metadata_from_pda()
     end
   end
@@ -111,11 +112,18 @@ defmodule SolTracker.Transfers do
   Get the account info for the PDA, and base58 encode it.
   Deserialize it according to the TMP spec by calling out to the Rust program via Rustler.
   """
-  def get_metadata_from_pda(pda_58) do
-    pda_58
-    |> get_metadata()
-    |> deserialize()
-    |> Jason.decode()
+  def get_metadata_from_pda(pda) do
+    case get_metadata(pda) do
+      {:ok, metadata} ->
+        try do
+          metadata
+          |> deserialize_metadata()
+          |> Jason.decode()
+        catch
+          _err -> Logger.warn("cannot deserialize with Metaplex format: #{metadata}")  
+        end
+      {:error, _} = err -> err
+    end
   end
 
   @doc """
@@ -124,13 +132,11 @@ defmodule SolTracker.Transfers do
   Return a base58-encoded string, because this is what the deserializer expects.
   """
   def get_metadata(pda) do
-    {:ok, bin} = B58.decode58(pda)
-    request = Solana.RPC.Request.get_account_info(bin, %{"encoding" => "base64"})
+    request = Solana.RPC.Request.get_account_info(pda, %{"encoding" => "base64"})
 
     with {:ok, %{"data" => data}} <- SolTracker.rpc_send(request),
-         {:ok, b} <- Base.decode64(Enum.at(data, 0)),
-         true <- String.length(res = B58.encode58(b)) < 100 do
-      {:ok, res}
+        {:ok, b} <- Base.decode64(Enum.at(data, 0)) do
+      {:ok, B58.encode58(b)}
     else
       _ -> {:error, :cannot_deserialize}
     end
@@ -141,5 +147,5 @@ defmodule SolTracker.Transfers do
   defp deserialize({:error, msg}), do: Jason.encode!(%{"error" => msg})
 
   # NIF entry point function
-  defp deserialize_metadata(arg), do: :erlang.nif_error(:nif_not_loaded)
+  def deserialize_metadata(arg), do: :erlang.nif_error(:nif_not_loaded)
 end
