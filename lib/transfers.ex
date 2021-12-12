@@ -33,13 +33,23 @@ defmodule SolTracker.Transfers do
     end
   end
 
-  defp parse_transfers(txs), do: Enum.map(txs, &filter_token_transfers(&1))
+  def parse_transfers(txs) do 
+    txs
+    |> Enum.map(&filter_token_transfers(&1))
+    |> Stream.filter(fn i -> is_map(i) end)
+    |> Stream.filter(fn i -> i["metadata"] !== [] end)
+    |> Enum.to_list()
+  end
+
 
   @doc """
   For a transaction body, match on the postTokenBalances field, which tells us whether a Token transfer--not just a SOL transfer--occurred.
   If it exists, derive the metadata for the mint address.
   """
   def filter_token_transfers(%{"meta" => %{"postTokenBalances" => nil}}),
+    do: Logger.info("No NFT transferred.")
+
+  def filter_token_transfers(%{"meta" => %{"postTokenBalances" => []}}),
     do: Logger.info("No NFT transferred.")
 
   def filter_token_transfers(%{
@@ -49,16 +59,19 @@ defmodule SolTracker.Transfers do
     # there can be more than one sig in a tx, this is a heuristic to identify the tx within the block
     tx_id = Enum.at(sigs, 0)
 
-    ptb
-    |> Enum.map(fn ptb -> derive_metadata_pda(ptb["mint"]) end)
-    |> Enum.reduce(
-      %{},
-      fn
-        {:ok, x}, acc -> Map.put_new(acc, tx_id, x)
-        _, acc -> acc
-      end
-    )
-    |> Enum.filter(fn i -> i !== %{} end)
+    meta = ptb
+      |> Stream.map(fn ptb -> derive_metadata_pda(ptb["mint"]) end)
+      |> Stream.map(fn 
+          {:ok, x} -> x
+          {:error, err} -> Logger.info("Jason decode error: #{err}")
+          _ -> nil
+        end)
+      |> Stream.filter(fn x -> is_map(x) end)
+      |> Enum.to_list()
+
+    %{}
+    |> Map.put("txid", tx_id)
+    |> Map.put("metadata", meta)
   end
 
   @doc """
@@ -68,8 +81,7 @@ defmodule SolTracker.Transfers do
     with {:ok, meta} <- B58.decode58(@metadata_program),
          {:ok, addr} <- B58.decode58(account_pubkey),
          {:ok, pda, _i} <- Solana.Key.find_address(["metadata", meta, addr], meta) do
-      pda
-      |> get_metadata_from_pda()
+      get_metadata_from_pda(pda)
     end
   end
 
@@ -85,7 +97,7 @@ defmodule SolTracker.Transfers do
           metadata
           |> deserialize_metadata()
           |> Jason.decode()
-        catch
+        rescue
           _err -> Logger.warn("cannot deserialize with Metaplex format: #{metadata}")  
         end
       {:error, _} = err -> err
