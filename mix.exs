@@ -24,7 +24,9 @@ defmodule SolTracker.MixProject do
     [
       {:solana, "~> 0.1.3"},
       {:websockex, "~> 0.4.3"},
-      {:rustler, "~> 0.22.2"}
+      {:rustler, "~> 0.22.2"},
+      {:ecto_sql, "~> 3.6"},
+      {:postgrex, ">= 0.0.0"}
     ]
   end
 end

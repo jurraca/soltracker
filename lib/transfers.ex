@@ -17,7 +17,7 @@ defmodule SolTracker.Transfers do
   end
 
   def track_metadata_program() do
-    SolTracker.keys()
+    SolTracker.program_keys()
     |> Map.get(:metadata_program)
     |> track()
   end
@@ -54,7 +54,7 @@ defmodule SolTracker.Transfers do
 
   def filter_token_transfers(%{
         "meta" => %{"postTokenBalances" => ptb},
-        "transaction" => %{"signatures" => sigs} = tx
+        "transaction" => %{"signatures" => sigs}
       }) do
     # there can be more than one sig in a tx, this is a heuristic to identify the tx within the block
     tx_id = Enum.at(sigs, 0)
@@ -130,10 +130,9 @@ defmodule SolTracker.Transfers do
   @doc """
   Decoding function for the ProgramSubscribe websocket endpoint. Needs shortVec encoding to properly parse base64.
   """
-  def decode(%{"result" => result, "subscription" => sub}), do: decode(result)
+  def decode(%{"result" => result, "subscription" => _sub}), do: decode(result)
 
   def decode(%{
-        "context" => context,
         "value" => %{"pubkey" => pubkey, "account" => %{"data" => data} = account}
       }) do
     account = %{
