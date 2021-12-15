@@ -5,6 +5,8 @@ Parse Blocks by slot ID, Transactions, and filter for NFT transfers.
 
 Decoding token metadata encoded under the Metaplex [standard](https://docs.metaplex.com/nft-standard) is done via a Rust [metaplex-decoder](https://github.com/samuelvanderwaal/metaplex_decoder), which we call via [Rustler](https://github.com/rusterlium/rustler). Therefore you will need Rust installed to compile the project. 
 
+This project was funded by [Hawku](https://www.hawku.com).  
+
 ```elixir
 SolTracker.Transfers.track() # spawns a websocket in a supervised process 
 SolTracker.Block.fetch(108379233) # fetch a block via RPC by its slot number
