@@ -52,3 +52,6 @@ def deps do
   ]
 end
 ```
+## Nix  
+
+A Nix flake and shell are made available under the `nix/` folder. Run `nix develop` to load an environment with all Elixir, Rust, and Postgres dependencies. The flake is there for convenience: it cannot compile a full mix release as it needs to build the Rust part independently (todo).
