@@ -1,7 +1,9 @@
 # SolTracker
 
 Start a websocket client to listen for logs or programs, or use the RPC directly. 
-Parse Blocks by slot ID, Transactions, and filter for NFT transfers.
+Parse Blocks by slot ID, Transactions, and filter for NFT transfers.  
+
+Decoding token metadata encoded under the Metaplex [standard](https://docs.metaplex.com/nft-standard) is done via a Rust [metaplex-decoder](https://github.com/samuelvanderwaal/metaplex_decoder), which we call via [Rustler](https://github.com/rusterlium/rustler). Therefore you will need Rust installed to compile the project. 
 
 ```elixir
 SolTracker.Transfers.track() # spawns a websocket in a supervised process 
